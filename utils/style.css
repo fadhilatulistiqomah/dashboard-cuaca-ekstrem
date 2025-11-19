@@ -1,0 +1,49 @@
+/* ================================
+   🌐 Global Style Streamlit
+   ================================ */
+
+/* Ubah font default seluruh aplikasi */
+html, body, [class*="css"] {
+    font-size: 18px !important;
+    font-family: "Segoe UI", sans-serif !important;
+}
+
+/* --- Label semua widget (termasuk date input, selectbox, dsb) --- */
+label, .stDateInput label, .stSelectbox label, .stTextInput label {
+    font-size: 20px !important;
+    font-weight: bold;
+}
+
+/* --- Header markdown (###, ##, dsb) --- */
+h1, h2, h3, h4 {
+    font-weight: 700 !important;
+}
+
+/* --- Tabel --- */
+.stDataFrame [data-testid="stTable"] thead th div p {
+    font-size: 18px !important;
+    font-weight: bold !important;
+}
+.stDataFrame [data-testid="stTable"] tbody tr td div p {
+    font-size: 16px !important;
+}
+
+/* --- Tombol --- */
+button, .stButton button {
+    font-size: 16px !important;
+    font-weight: 600;
+    border-radius: 10px !important;
+}
+
+/* --- Input teks --- */
+input, textarea {
+    font-size: 16px !important;
+}
+
+/* ============================
+   HILANGKAN HEADER STREAMLIT
+   ============================ */
+
+#MainMenu {visibility: hidden !important;}
+footer {visibility: hidden !important;}
+header {visibility: hidden !important;}
