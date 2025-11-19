@@ -207,7 +207,7 @@ with tab2:
     #st.header("Laporan Angin Kencang (Gale) dengan Data 'nddff' Kosong")
 
     # --- MongoDB Collection Setup ---
-    collection_gale = "data_suspect"
+    collection_gale = "data_error"
 
     # --- Query untuk mencari data Gale dengan nddff kosong dari MongoDB ---
     query_filter = {
@@ -285,7 +285,7 @@ with tab3:
     st.header("Data Suspect - Kesalahan Sandi SYNOP")
 
     # --- MongoDB Collection Setup ---
-    collection_susp = "data_suspect"
+    collection_susp = "data_error"
 
     # --- Query semua dokumen untuk tanggal yang dipilih ---
     query_filter = {"tanggal": pilih_tanggal.strftime("%Y-%m-%d")}
