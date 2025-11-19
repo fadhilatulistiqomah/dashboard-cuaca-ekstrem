@@ -18,15 +18,40 @@ except Exception as e:
     st.error(f"❌ Gagal terhubung ke MongoDB: {e}")
     st.stop()
 
+# def get_data_from_mongodb(collection_name, query_filter, sort_key=None, sort_order=1):
+#     """Helper function untuk query data dari MongoDB"""
+#     collection = db[collection_name]
+#     query = list(collection.find(query_filter))
+#     df = pd.DataFrame(query)
+#     if '_id' in df.columns:
+#         df = df.drop('_id', axis=1)
+#     if sort_key and not df.empty:
+#         df = df.sort_values(by=sort_key, ascending=(sort_order==-1))
+#     return df
+
 def get_data_from_mongodb(collection_name, query_filter, sort_key=None, sort_order=1):
-    """Helper function untuk query data dari MongoDB"""
+    """Query data dari MongoDB & auto-konversi field numerik."""
     collection = db[collection_name]
     query = list(collection.find(query_filter))
     df = pd.DataFrame(query)
-    if '_id' in df.columns:
-        df = df.drop('_id', axis=1)
-    if sort_key and not df.empty:
-        df = df.sort_values(by=sort_key, ascending=(sort_order==-1))
+
+    if df.empty:
+        return df
+
+    # Hapus _id
+    if "_id" in df.columns:
+        df = df.drop("_id", axis=1)
+
+    # --- Auto-konversi semua kolom numerik ---
+    numeric_cols = ["Tmin", "Tmax", "Curah_Hujan"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # --- Sorting ---
+    if sort_key and sort_key in df.columns:
+        df = df.sort_values(by=sort_key, ascending=(sort_order == 1), na_position="last")
+
     return df
 
 
