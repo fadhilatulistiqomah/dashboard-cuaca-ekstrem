@@ -68,7 +68,7 @@ PASSWORD = "oprpusmetbang"   # ganti dengan password BMKG Satu kamu
 
 # Tentukan TAHUN dan BULAN yang akan diproses
 TAHUN = 2025
-BULAN = 10
+BULAN = 1
 
 # =======================================
 # 4️⃣ Fungsi untuk ambil token
