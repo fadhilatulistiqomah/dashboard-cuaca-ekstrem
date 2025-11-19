@@ -1,8 +1,29 @@
 import streamlit as st
-import sqlite3
+from pymongo import MongoClient
 import pandas as pd
 from datetime import date, timedelta
 import re
+
+# --- MongoDB Setup ---
+MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
+DB_NAME = "cuaca_ekstrem"
+
+try:
+    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    db = client[DB_NAME]
+except Exception as e:
+    st.error(f"❌ Gagal terhubung ke MongoDB: {e}")
+    st.stop()
+
+def get_data_from_mongodb(collection_name, query_filter):
+    """Helper function untuk query data dari MongoDB"""
+    collection = db[collection_name]
+    data = list(collection.find(query_filter))
+    df = pd.DataFrame(data)
+    if '_id' in df.columns:
+        df = df.drop('_id', axis=1)
+    return df
 
 # --- Konfigurasi halaman ---
 st.set_page_config(page_title="Data Suspect", layout="wide")
@@ -69,47 +90,16 @@ st.markdown("""
 
 # --- KODE UNTUK TAB 1: HEAVY RAIN SUSPECT ---
 with tab1:
-    #st.header("Perbandingan Curah Hujan 24 Jam vs Akumulasi Per Jam")
-
-    # --- Koneksi ke database SQLite ---
-    db_path_salah = "data_suspect4.db"
-    table_name_salah = "data_salah"
-    conn_salah = sqlite3.connect(db_path_salah)
-
-    # # --- Logika Tanggal untuk Heavy Rain ---
-    # # Jika Anda pilih 2 Jan, variabel ini akan berisi 1 Jan.
-    # tanggal_untuk_query = pilih_tanggal - timedelta(days=1)
-
-    # # --- Query untuk Heavy Rain ---
-    # query_hr = f"""
-    # SELECT station_wmo_id, NAME, jam, sandi_gts,
-    #        Curah_Hujan, Curah_Hujan_Jam, tanggal
-    # FROM {table_name_salah}
-    # WHERE (tanggal = ? AND jam != '00:00')
-    #    OR (tanggal = ? AND jam = '00:00')
-    # ORDER BY station_wmo_id, jam
-    # """
-    # # Note: query diubah sedikit agar lebih jelas. `date(?, '+1 day')` diganti dengan `pilih_tanggal`
-    # df_hr = pd.read_sql_query(query_hr, conn_salah, params=(tanggal_untuk_query.strftime("%Y-%m-%d"), pilih_tanggal.strftime("%Y-%m-%d")))
+    # --- MongoDB Collection Setup ---
+    collection_suspect = "data_suspect"
+    
     # --- Logika Tanggal untuk Heavy Rain ---
-    # Jika Anda pilih 2 Okt, variabel ini akan berisi 1 Okt.
     tanggal_untuk_query = pilih_tanggal - timedelta(days=1)
 
-    # --- Query untuk Heavy Rain ---
-    # Karena script processing Anda sudah MENYATUKAN semua data (termasuk 00Z) 
-    # di bawah satu tanggal observasi, kita HANYA perlu query ke satu tanggal itu.
-    query_hr = f"""
-    SELECT station_wmo_id, NAME, jam, sandi_gts,
-        Curah_Hujan, Curah_Hujan_Jam, tanggal
-    FROM {table_name_salah}
-    WHERE tanggal = ?
-    ORDER BY station_wmo_id, jam
-    """
-
-    # Kita sekarang hanya butuh SATU parameter
-    params_hr = (tanggal_untuk_query.strftime("%Y-%m-%d"),)
-    df_hr = pd.read_sql_query(query_hr, conn_salah, params=params_hr)
-    conn_salah.close()
+    # --- Query untuk Heavy Rain dari MongoDB ---
+    query_filter = {"tanggal": tanggal_untuk_query.strftime("%Y-%m-%d")}
+    df_hr = get_data_from_mongodb(collection_suspect, query_filter)
+    df_hr = df_hr.sort_values(by=["station_wmo_id", "jam"]) if not df_hr.empty else df_hr
 
     # --- Pemrosesan Data Heavy Rain ---
     mask = ~(
@@ -216,22 +206,16 @@ with tab1:
 with tab2:
     #st.header("Laporan Angin Kencang (Gale) dengan Data 'nddff' Kosong")
 
-    # --- Koneksi ke database ---
-    db_path_gale = "data_suspect4.db"
-    table_name_gale = "data_suspect"
-    conn_gale = sqlite3.connect(db_path_gale)
+    # --- MongoDB Collection Setup ---
+    collection_gale = "data_suspect"
 
-    # --- Query untuk mencari data Gale dengan nddff kosong pada tanggal yang dipilih ---
-    # Logika tanggalnya lebih sederhana, hanya mencari di tanggal yang dipilih
-    query_gale = f"""
-    SELECT station_wmo_id, NAME, jam, sandi_gts
-    FROM {table_name_gale}
-    WHERE tanggal = ? AND (false_nddff = "Sandi nddff tidak ditemukan di seksi 1")
-    ORDER BY station_wmo_id, jam
-    """
-    params_gale = (pilih_tanggal.strftime("%Y-%m-%d"),)
-    df_gale = pd.read_sql_query(query_gale, conn_gale, params=params_gale)
-    conn_gale.close()
+    # --- Query untuk mencari data Gale dengan nddff kosong dari MongoDB ---
+    query_filter = {
+        "tanggal": pilih_tanggal.strftime("%Y-%m-%d"),
+        "false_nddff": "Sandi nddff tidak ditemukan di seksi 1"
+    }
+    df_gale = get_data_from_mongodb(collection_gale, query_filter)
+    df_gale = df_gale.sort_values(by=["station_wmo_id", "jam"]) if not df_gale.empty else df_gale
 
     # --- Tampilkan hasil ---
     if df_gale.empty:
@@ -300,21 +284,13 @@ st.markdown("""
 with tab3:
     st.header("Data Suspect - Kesalahan Sandi SYNOP")
 
-    # --- Koneksi ke database ---
-    db_path_susp = "data_suspect4.db"
-    table_name_susp = "data_suspect"
-    conn_susp = sqlite3.connect(db_path_susp)
+    # --- MongoDB Collection Setup ---
+    collection_susp = "data_suspect"
 
-    # --- Query semua kolom termasuk yang false_ ---
-    query_susp = f"""
-    SELECT *
-    FROM {table_name_susp}
-    WHERE tanggal = ?
-    ORDER BY station_wmo_id, jam
-    """
-    params_susp = (pilih_tanggal.strftime("%Y-%m-%d"),)
-    df_susp = pd.read_sql_query(query_susp, conn_susp, params=params_susp)
-    conn_susp.close()
+    # --- Query semua dokumen untuk tanggal yang dipilih ---
+    query_filter = {"tanggal": pilih_tanggal.strftime("%Y-%m-%d")}
+    df_susp = get_data_from_mongodb(collection_susp, query_filter)
+    df_susp = df_susp.sort_values(by=["station_wmo_id", "jam"]) if not df_susp.empty else df_susp
 
     # --- Cek apakah data kosong ---
     if df_susp.empty:

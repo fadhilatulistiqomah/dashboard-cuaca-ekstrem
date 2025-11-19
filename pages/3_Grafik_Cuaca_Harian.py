@@ -1,5 +1,5 @@
 import streamlit as st
-import sqlite3
+from pymongo import MongoClient
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
@@ -7,6 +7,27 @@ import numpy as np
 from windrose import WindroseAxes
 from datetime import date
 import re
+
+# --- MongoDB Setup ---
+MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
+DB_NAME = "cuaca_ekstrem"
+
+try:
+    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    db = client[DB_NAME]
+except Exception as e:
+    st.error(f"❌ Gagal terhubung ke MongoDB: {e}")
+    st.stop()
+
+def get_data_from_mongodb(collection_name, query_filter):
+    """Helper function untuk query data dari MongoDB"""
+    collection = db[collection_name]
+    data = list(collection.find(query_filter))
+    df = pd.DataFrame(data)
+    if '_id' in df.columns:
+        df = df.drop('_id', axis=1)
+    return df
 
 # --- Konfigurasi halaman ---
 st.set_page_config(page_title="Data Cuaca Harian", layout="wide")
@@ -37,17 +58,20 @@ setup_sidebar_footer()
 
 #st.title("Data Cuaca Harian per Stasiun")
 
-# --- Koneksi ke database SQLite ---
-db_path = "data_lengkap3.db"   # ganti sesuai path
-table_name = "data_lengkap"    # ganti sesuai tabel
-conn = sqlite3.connect(db_path)
+# --- MongoDB Collection Setup ---
+collection_name = "data_lengkap"
 
-
-
-# --- Ambil daftar stasiun ---
-df_stasiun = pd.read_sql_query(
-    f"SELECT DISTINCT station_wmo_id, NAME FROM {table_name} ORDER BY station_wmo_id", conn
-)
+# --- Ambil daftar stasiun dari MongoDB ---
+try:
+    stasiun_data = db[collection_name].aggregate([
+        {"$group": {"_id": "$station_wmo_id", "NAME": {"$first": "$NAME"}}},
+        {"$sort": {"_id": 1}}
+    ])
+    stasiun_list = list(stasiun_data)
+    df_stasiun = pd.DataFrame([{"station_wmo_id": doc["_id"], "NAME": doc["NAME"]} for doc in stasiun_list])
+except Exception as e:
+    st.error(f"❌ Gagal mengambil data stasiun: {e}")
+    st.stop()
 
 # Buat dictionary untuk sinkronisasi dua arah
 id_to_name = dict(zip(df_stasiun["station_wmo_id"], df_stasiun["NAME"]))
@@ -106,17 +130,16 @@ else:
     st.info("Silakan pilih salah satu: WMO ID atau Nama Stasiun.")
 
 
-# --- Query data ---
-query = f"""
-SELECT station_wmo_id, NAME, jam, tanggal, sandi_gts,
-       Tekanan_Permukaan, Temperatur, Kecepatan_angin, Arah_angin, Curah_Hujan_Jam,Dew_Point
-FROM {table_name}
-WHERE tanggal = ?
-  AND station_wmo_id = ?
-ORDER BY jam
-"""
-df = pd.read_sql_query(query, conn, params=(pilih_tanggal.strftime("%Y-%m-%d"), pilih_station))
-conn.close()
+# --- Query data dari MongoDB ---
+query_filter = {
+    "tanggal": pilih_tanggal.strftime("%Y-%m-%d"),
+    "station_wmo_id": pilih_station
+}
+df = get_data_from_mongodb(collection_name, query_filter)
+if not df.empty:
+    df = df.sort_values(by="jam")
+df = df[["station_wmo_id", "NAME", "jam", "tanggal", "sandi_gts",
+         "Tekanan_Permukaan", "Temperatur", "Kecepatan_angin", "Arah_angin", "Curah_Hujan_Jam", "Dew_Point"]]
 
 if df.empty:
     st.warning("⚠️ Tidak ada data untuk tanggal dan stasiun yang dipilih.")

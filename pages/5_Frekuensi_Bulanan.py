@@ -3,8 +3,31 @@ import pandas as pd
 import folium
 from folium import plugins
 from streamlit_folium import st_folium
-import sqlite3
+from pymongo import MongoClient
 import branca.element as element
+
+# --- MongoDB Setup ---
+MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
+DB_NAME = "cuaca_ekstrem"
+
+try:
+    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    db = client[DB_NAME]
+except Exception as e:
+    st.error(f"❌ Gagal terhubung ke MongoDB: {e}")
+    st.stop()
+
+def get_data_from_mongodb(collection_name, query_filter=None):
+    """Helper function untuk query data dari MongoDB"""
+    collection = db[collection_name]
+    if query_filter is None:
+        query_filter = {}
+    data = list(collection.find(query_filter))
+    df = pd.DataFrame(data)
+    if '_id' in df.columns:
+        df = df.drop('_id', axis=1)
+    return df
 
 # --- Konfigurasi halaman ---
 st.set_page_config(page_title="Peta Frekuensi Cuaca Ekstrem", layout="wide")
@@ -162,14 +185,12 @@ st.markdown("""
 # --- TAB 1: HEAVY RAIN (KODE ANDA YANG SEBELUMNYA) ---
 # ==========================================================
 with tab1:
-    # --- Koneksi ke database ---
-    db_path_hr = "data_akhir1.db"
-    conn_hr = sqlite3.connect(db_path_hr)
+    # --- Ambil data Heavy Rain dari MongoDB ---
+    df_hr = get_data_from_mongodb("data_akhir")
     
-    # --- Ambil data ---
-    query_hr = "SELECT station_wmo_id, NAME, LAT, LON, Heavy_Rain, tanggal FROM data_akhir"
-    df_hr = pd.read_sql_query(query_hr, conn_hr)
-    conn_hr.close()
+    # Filter kolom yang diperlukan
+    if not df_hr.empty:
+        df_hr = df_hr[["station_wmo_id", "NAME", "LAT", "LON", "Heavy_Rain", "tanggal"]]
 
     # --- Pastikan kolom tanggal benar ---
     df_hr["tanggal"] = pd.to_datetime(df_hr["tanggal"], errors="coerce")
@@ -251,15 +272,12 @@ with tab1:
 # --- TAB 2: GALE (KODE BARU YANG DIMODIFIKASI) ---
 # ==========================================================
 with tab2:
-    # --- Koneksi ke database ---
-    db_path_gale = "data_lengkap3.db" # <-- GANTI DB
-    conn_gale = sqlite3.connect(db_path_gale)
+    # --- Ambil data Gale dari MongoDB ---
+    df_gale = get_data_from_mongodb("data_lengkap")
     
-    # --- Ambil data ---
-    # <-- GANTI QUERY (asumsi tabel 'data_lengkap' dan kolom 'Kecepatan_angin')
-    query_gale = "SELECT station_wmo_id, NAME, LAT, LON, Kecepatan_angin, tanggal, jam, sandi_gts FROM data_lengkap"
-    df_gale = pd.read_sql_query(query_gale, conn_gale)
-    conn_gale.close()
+    # Filter kolom yang diperlukan
+    if not df_gale.empty:
+        df_gale = df_gale[["station_wmo_id", "NAME", "LAT", "LON", "Kecepatan_angin", "tanggal", "jam", "sandi_gts"]]
 
     # --- Pastikan kolom tanggal dan angin benar ---
     df_gale["tanggal"] = pd.to_datetime(df_gale["tanggal"], errors="coerce")

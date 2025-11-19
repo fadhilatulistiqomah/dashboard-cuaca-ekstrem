@@ -1,10 +1,33 @@
 import streamlit as st
-import sqlite3
+from pymongo import MongoClient
 import pandas as pd
 from datetime import date
 from utils.ui import setup_header,setup_sidebar_footer
 from datetime import timedelta
 from pathlib import Path
+
+# --- MongoDB Setup ---
+MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
+DB_NAME = "cuaca_ekstrem"
+
+try:
+    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    client.admin.command('ping')
+    db = client[DB_NAME]
+except Exception as e:
+    st.error(f"❌ Gagal terhubung ke MongoDB: {e}")
+    st.stop()
+
+def get_data_from_mongodb(collection_name, query_filter, sort_key=None, sort_order=1):
+    """Helper function untuk query data dari MongoDB"""
+    collection = db[collection_name]
+    query = list(collection.find(query_filter))
+    df = pd.DataFrame(query)
+    if '_id' in df.columns:
+        df = df.drop('_id', axis=1)
+    if sort_key and not df.empty:
+        df = df.sort_values(by=sort_key, ascending=(sort_order==-1))
+    return df
 
 
 # --- Konfigurasi halaman ---
@@ -70,15 +93,17 @@ setup_sidebar_footer()
 #     </div>
 # """, unsafe_allow_html=True)
 
-# --- Koneksi ke database utama (Tmax, Tmin) ---
-db_path1 = "data_lengkap3.db"
-table_name1 = "data_lengkap"
-conn1 = sqlite3.connect(db_path1)
+# --- MongoDB Collections ---
+collection_lengkap = "data_lengkap"
+collection_akhir = "data_akhir"
 
-# --- Ambil semua tanggal unik dari database utama ---
-tanggal_list = pd.read_sql_query(
-    f"SELECT DISTINCT tanggal FROM {table_name1} ORDER BY tanggal", conn1
-)["tanggal"].tolist()
+# --- Ambil semua tanggal unik dari MongoDB ---
+try:
+    distinct_dates = db[collection_lengkap].distinct("tanggal")
+    tanggal_list = sorted([d for d in distinct_dates if d is not None])
+except Exception as e:
+    st.warning(f"⚠️ Gagal mengambil daftar tanggal: {e}")
+    tanggal_list = []
 
 # --- Widget pilih tanggal (default = hari ini) ---
 pilih_tanggal = st.date_input(
@@ -127,15 +152,13 @@ with tab1:
     # --- Input jumlah baris dinamis ---
     limit_n_tmin = st.slider("Tampilkan berapa stasiun teratas:", min_value=5, max_value=50, value=10, step=5, key="limit_tmin")
 
-    # --- Query data ---
-    query_tmin = f"""
-    SELECT station_wmo_id, NAME, Tmin
-    FROM {table_name1}
-    WHERE tanggal = ? AND Tmin IS NOT NULL
-    ORDER BY Tmin ASC
-    LIMIT {limit_n_tmin}
-    """
-    df_tmin = pd.read_sql_query(query_tmin, conn1, params=(pilih_tanggal.strftime("%Y-%m-%d"),))
+    # --- Query data dari MongoDB ---
+    query_filter = {
+        "tanggal": pilih_tanggal.strftime("%Y-%m-%d"),
+        "Tmin": {"$ne": None}
+    }
+    df_tmin = get_data_from_mongodb(collection_lengkap, query_filter, sort_key="Tmin", sort_order=1)
+    df_tmin = df_tmin[["station_wmo_id", "NAME", "Tmin"]].head(limit_n_tmin)
 
     # --- Judul dinamis ---
     st.subheader(f"{limit_n_tmin} Temperatur Minimum Terendah ({pilih_tanggal.strftime('%d-%m-%Y')})")
@@ -190,15 +213,10 @@ with tab2:
     # --- Input jumlah baris ---
     limit_n = st.slider("Tampilkan berapa stasiun teratas:", min_value=5, max_value=50, value=10, step=5)
 
-    # --- Query data ---
-    query_tmax = f"""
-    SELECT station_wmo_id, NAME, Tmax
-    FROM {table_name1}
-    WHERE tanggal = ?
-    ORDER BY Tmax DESC
-    LIMIT {limit_n}
-    """
-    df_tmax = pd.read_sql_query(query_tmax, conn1, params=(pilih_tanggal.strftime("%Y-%m-%d"),))
+    # --- Query data dari MongoDB ---
+    query_filter = {"tanggal": pilih_tanggal.strftime("%Y-%m-%d")}
+    df_tmax = get_data_from_mongodb(collection_lengkap, query_filter, sort_key="Tmax", sort_order=-1)
+    df_tmax = df_tmax[["station_wmo_id", "NAME", "Tmax"]].head(limit_n)
 
     # --- Judul dinamis ---
     st.subheader(f"{limit_n} Temperatur Maksimum Teratas ({pilih_tanggal.strftime('%d-%m-%Y')})")
@@ -250,25 +268,14 @@ with tab2:
     """, unsafe_allow_html=True)
 
 
-# Tutup koneksi pertama
-conn1.close()
-
 # ===================== TAB 3: Curah Hujan =====================
 with tab3:
-    db_path2 = "data_akhir1.db"
-    table_name2 = "data_akhir"
-    conn2 = sqlite3.connect(db_path2)
-
     limit_n_ch = st.slider("Tampilkan berapa stasiun teratas:", min_value=5, max_value=50, value=10, step=5, key="limit_ch")
 
-    query_ch = f"""
-    SELECT station_wmo_id, NAME, Curah_Hujan
-    FROM {table_name2}
-    WHERE tanggal = ?
-    ORDER BY Curah_Hujan DESC
-    LIMIT {limit_n_ch}
-    """
-    df_ch = pd.read_sql_query(query_ch, conn2, params=(pilih_tanggal.strftime("%Y-%m-%d"),))
+    # --- Query data dari MongoDB ---
+    query_filter = {"tanggal": pilih_tanggal.strftime("%Y-%m-%d")}
+    df_ch = get_data_from_mongodb(collection_akhir, query_filter, sort_key="Curah_Hujan", sort_order=-1)
+    df_ch = df_ch[["station_wmo_id", "NAME", "Curah_Hujan"]].head(limit_n_ch)
     st.subheader(f"{limit_n_ch} Curah Hujan ({pilih_tanggal.strftime('%d-%m-%Y')})")
 
     if df_ch.empty:
@@ -310,5 +317,3 @@ with tab3:
     3. Threshold untuk Curah Hujan adalah <b>50 mm/hari</b>
     </div>
     """, unsafe_allow_html=True)
-
-    conn2.close()
