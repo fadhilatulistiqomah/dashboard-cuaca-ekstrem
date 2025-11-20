@@ -45,14 +45,14 @@ def setup_header():
     <hr>
     """, unsafe_allow_html=True)
 
-def setup_sidebar_footer():
-    st.sidebar.markdown("""
-        <div class="sidebar-footer"
-             style="font-size: 12px; color: #666; text-align: center; margin-top: 250px;">
-            © 2025 | BMKG Dashboard Prototype Aktualisasi Fadhilatul Istiqomah
-        </div>
-    """, unsafe_allow_html=True)
 # def setup_sidebar_footer():
+#     st.sidebar.markdown("""
+#         <div class="sidebar-footer"
+#              style="font-size: 12px; color: #666; text-align: center; margin-top: 250px;">
+#             © 2025 | BMKG Dashboard Prototype Aktualisasi Fadhilatul Istiqomah
+#         </div>
+#     """, unsafe_allow_html=True)
+# # def setup_sidebar_footer():
 #     st.sidebar.markdown("""
 #         <style>
 #         /* Pastikan sidebar menjadi container posisi relatif */
@@ -86,3 +86,33 @@ def setup_sidebar_footer():
 #             © 2025 | BMKG Dashboard Prototype Aktualisasi Fadhilatul Istiqomah
 #         </div>
 #     """, unsafe_allow_html=True)
+def setup_sidebar_footer():
+    st.sidebar.markdown("""
+        <style>
+        /* Ubah sidebar jadi flex column agar footer bisa menempel di bawah */
+        section[data-testid="stSidebar"] > div:first-child {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Container utama menu sidebar */
+        .sidebar-content {
+            flex: 1; /* mendorong footer ke bawah */
+        }
+
+        /* Footer */
+        .sidebar-footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding: 10px 5px 20px 5px;
+        }
+        </style>
+
+        <div class="sidebar-content"></div>
+        <div class="sidebar-footer">
+            © 2025 | BMKG Dashboard Prototype<br>
+            Fadhilatul Istiqomah
+        </div>
+    """, unsafe_allow_html=True)
