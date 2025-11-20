@@ -9,5 +9,5 @@ numpy
 windrose
 openpyxl
 pymongo
-streamlit-authenticator
+streamlit-authenticator==0.1.5 
 
