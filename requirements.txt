@@ -9,3 +9,7 @@ numpy
 windrose
 openpyxl
 pymongo
+streamlit-authenticator
+bcrypt
+pickle
+pathlib
