@@ -44,21 +44,25 @@ setup_header()
 setup_sidebar_footer()
 
 
-names = ["sobp"]
-usernames = ["sobp"]
-
 file_path = Path(__file__).parent / "hashed_pw.pkl"
 with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
+    credentials = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords,"usernames","abcdef", cookie_expiry_days=30)
+authenticator = stauth.Authenticate(
+    credentials["usernames"],
+    "abcdef",
+    "dashboard_cookie",
+    cookie_expiry_days=30
+)
 
-names, authentication_status, usernames = authenticator.login("Login", "main")
+names, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status == False:
     st.error("Username/password salah")
+    st.stop()
 if authentication_status == None:
-    st.warning("Silakan masukkan username dan password")    
+    st.warning("Silakan masukkan username dan password")
+    st.stop()
 if authentication_status:   
 
     # ==========================================================
