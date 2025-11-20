@@ -38,12 +38,6 @@ def get_data_from_mongodb(collection_name, query_filter):
 
 # --- Konfigurasi halaman (hanya boleh dipanggil sekali di paling atas) ---
 st.set_page_config(page_title="🌦️ Peta Cuaca Ekstrem", layout="wide")
-
-from utils.ui import setup_header,setup_sidebar_footer
-setup_header()
-setup_sidebar_footer()
-
-
 names = ["sobp"]
 usernames = ["sobp"]
 
@@ -59,7 +53,14 @@ if authentication_status == False:
     st.error("Username/password salah")
 if authentication_status == None:
     st.warning("Silakan masukkan username dan password")    
-if authentication_status:   
+if authentication_status: 
+
+    from utils.ui import setup_header,setup_sidebar_footer
+    setup_header()
+    setup_sidebar_footer()
+
+
+  
 
     # ==========================================================
     # 🧭 1️⃣ KONFIGURASI SIDEBAR DENGAN LOGO
