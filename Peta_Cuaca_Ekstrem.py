@@ -6,12 +6,11 @@ import pandas as pd
 from folium import CustomIcon
 from pymongo import MongoClient
 from datetime import date, timedelta
-#from deep_translator import GoogleTranslator
 import re
 import pickle
-from pathlib import Path    
-import streamlit_authenticator as stauth    
-
+from pathlib import Path
+import streamlit_authenticator as stauth
+import time # Tambahkan ini
 
 # ⚡ MongoDB Connection Setup
 MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
@@ -19,7 +18,7 @@ DB_NAME = "cuaca_ekstrem"
 client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
 
-# Helper function untuk query data dari MongoDB
+# Helper function untuk query data dari MongoDB (tidak berubah)
 def get_data_from_mongodb(collection_name, query_filter):
     """
     Ambil data dari MongoDB collection
@@ -47,31 +46,27 @@ with file_path.open("rb") as file:
 
 authenticator = stauth.Authenticate(names, usernames, hashed_passwords,"usernames","abcdef", cookie_expiry_days=30)
 
+# --- Proses Login ---
 names, authentication_status, usernames = authenticator.login("Login", "main")
 
+# --- Penanganan Status Autentikasi ---
 if authentication_status == False:
     st.error("Username/password salah")
+    st.stop() # Hentikan eksekusi setelah menampilkan error
 if authentication_status == None:
-    st.warning("Silakan masukkan username dan password")    
-if authentication_status: 
+    st.warning("Silakan masukkan username dan password")
+    st.stop() # Hentikan eksekusi jika belum login/mencoba login
 
+# --- KONTEN APLIKASI TERPROTEKSI DIMULAI DI SINI ---
+if authentication_status: 
+    # Tambahkan Tombol Logout di sidebar atau di header
+    st.sidebar.title(f"Selamat Datang, {usernames}!")
+    authenticator.logout("Logout", "sidebar")
+    
+    # Impor utility hanya jika sudah login
     from utils.ui import setup_header,setup_sidebar_footer
     setup_header()
     setup_sidebar_footer()
-
-
-  
-
-    # ==========================================================
-    # 🧭 1️⃣ KONFIGURASI SIDEBAR DENGAN LOGO
-    # ==========================================================
-
-    # st.sidebar.markdown("""
-    #     <div class="sidebar-footer" style="font-size: 12px; color: #666; text-align: center; margin-top: 400px;">
-    #         © 2025 | BMKG Dashboard Prototype Aktualisasi Fadhilatul Istiqomah
-    #     </div>
-    # """, unsafe_allow_html=True)
-    #st.title("Peta Cuaca Ekstrem")
 
     # ==========================================================
     # 💾 2️⃣ PENGAMBILAN DATA
@@ -81,37 +76,9 @@ if authentication_status:
     collection_akhir = "data_akhir"
     collection_lengkap = "data_lengkap"
 
-    # st.markdown("""
-    #     <style>
-                
-    #     label, .stDateInput label {
-    #         font-size: 20px !important;
-    #         font-weight: bold;
-    #     }
-                
-    #     /* Ubah ukuran font di tabel Streamlit */
-    #     .stDataFrame div[data-testid="stMarkdownContainer"] {
-    #         font-size: 18px !important;
-    #     }
-
-    #     /* Ubah ukuran font di header tabel */
-    #     .stDataFrame th {
-    #         font-size: 18px !important;
-    #         font-weight: bold !important;
-    #     }
-
-    #     /* Ubah ukuran font di isi tabel */
-    #     .stDataFrame td {
-    #         font-size: 16px !important;
-    #     }
-    #     </style>
-    # """, unsafe_allow_html=True)
-
-
     # --- Widget utama untuk memilih tanggal ---
     pilih_tanggal = st.date_input(
         "📅 Pilih tanggal:",
-        #value=date(2025, 1, 1),
         value=date.today(),
         min_value=date(2025, 1, 1),
         max_value=date(2025, 12, 31)
@@ -139,7 +106,7 @@ if authentication_status:
                 "Kecepatan_angin": {"$gte": 34}
             },
             {
-                "tanggal": pilih_tanggal.strftime("%Y-%m-%d"),
+                "tanggal": pilih_tanggal.strftime("%Y-%M-%d"),
                 "jam": "00:00",
                 "Kecepatan_angin": {"$gte": 34}
             }
@@ -163,9 +130,6 @@ if authentication_status:
     # 🗺️ 3️⃣ PEMBUATAN PETA
     # ==========================================================
 
-    # st.markdown("<h1 style='margin-top: -30px;'>Peta Cuaca Ekstrem</h1>", unsafe_allow_html=True)
-
-    #m = folium.Map(location=[-2, 118], zoom_start=5, tiles="CartoDB Voyager")
     m = folium.Map(location=[-2, 118], zoom_start=5, tiles=None)
 
     # Tambahkan tile CartoDB Voyager tanpa label attribution
@@ -216,7 +180,9 @@ if authentication_status:
             try:
                 hr_value = float(row["Heavy_Rain"])
                 if hr_value > 0:
-                    rain_icon = CustomIcon("cloud_rain.png", icon_size=(30, 30))
+                    # Ganti 'cloud_rain.png' dengan URL gambar yang valid atau tangani sebagai aset
+                    # Untuk contoh ini, saya asumsikan Anda memiliki file 'cloud_rain.png' yang dapat diakses
+                    rain_icon = CustomIcon("cloud_rain.png", icon_size=(30, 30)) 
                     folium.Marker(
                         location=[lat, lon], icon=rain_icon,
                         popup=(
@@ -233,6 +199,7 @@ if authentication_status:
         for _, row in df_gale.iterrows():
             lat, lon = row["LAT"], row["LON"]
             if pd.notna(lat) and pd.notna(lon):
+                # Ganti 'wind.png' dengan URL gambar yang valid atau tangani sebagai aset
                 wind_icon = CustomIcon("wind.png", icon_size=(30, 30))
                 folium.Marker(
                     location=[lat, lon], icon=wind_icon,
@@ -250,9 +217,9 @@ if authentication_status:
 
     # --- TAMBAHKAN BLOK KODE INI ---
     plugins.Fullscreen(
-        position="topright",  # Bisa 'topleft', 'topright', 'bottomleft', 'bottomright'
-        title="Lihat Fullscreen", # Teks saat mouse hover
-        title_cancel="Keluar Fullscreen", # Teks saat mouse hover (dalam mode fullscreen)
+        position="topright",
+        title="Lihat Fullscreen",
+        title_cancel="Keluar Fullscreen",
         force_separate_button=True,
     ).add_to(m)
 
@@ -284,74 +251,38 @@ if authentication_status:
             "station_wmo_id", "NAME","sandi_gts" ,"Heavy_Rain"
         ]].sort_values(by=["Heavy_Rain"], ascending=False).reset_index(drop=True)
         df_tabel_hr.index = df_tabel_hr.index + 1
-        # 2. Buat salinan KHUSUS TAMPILAN (pola yang aman dan konsisten)
         df_tabel_hr_display = df_tabel_hr.copy()
-
-        # 3. Definisikan regex
         regex_ekstraksi_kondisional = r'(\b(AAXX|AXX|AAAXX|AAX|AXXX)\b.*?(?:=|$))'
         
-        # 4. Terapkan pembersihan ke SALINAN (df_tabel_hr_display)
         df_tabel_hr_display['sandi_gts'] = (
             df_tabel_hr_display['sandi_gts']
-            .str.extract(regex_ekstraksi_kondisional, flags=re.DOTALL)[0] # Ekstrak
-            .fillna("")                                   # Ganti error/NaN jadi string kosong
-            .str.replace(r'CCA', '', regex=True)          # Hapus CCA
-            .str.replace(r'CCB', '', regex=True)          # Hapus CCB
-            .str.replace(r'\s+', ' ', regex=True)         # Rapikan spasi
-            .str.strip()                                  # Hapus spasi awal/akhir
+            .str.extract(regex_ekstraksi_kondisional, flags=re.DOTALL)[0] 
+            .fillna("") 
+            .str.replace(r'CCA', '', regex=True) 
+            .str.replace(r'CCB', '', regex=True) 
+            .str.replace(r'\s+', ' ', regex=True) 
+            .str.strip()
         )
-        # ================================================================
-        #         AKHIR DARI BAGIAN TAMBAHAN
-        # ================================================================
 
-        # 5. Tampilkan DataFrame salinan yang sudah bersih
         st.dataframe(
-            df_tabel_hr_display,  # <-- Gunakan df_tabel_hr_display
+            df_tabel_hr_display,
             use_container_width=True,
             column_config={
                 "station_wmo_id": st.column_config.Column("WMO ID Stasiun"),
                 "NAME": st.column_config.Column("Nama Stasiun"),
-                "sandi_gts": st.column_config.Column("Sandi GTS"), # Ini sudah bersih
+                "sandi_gts": st.column_config.Column("Sandi GTS"),
                 "Heavy_Rain": st.column_config.Column("Curah Hujan (mm/hari)")
             }
         )
-        # #st.dataframe(df_tabel_hr, use_container_width=True)
-        # st.dataframe(
-        #     df_tabel_hr,  # DataFrame Anda yang sudah di-style
-        #     use_container_width=True,
-        #     column_config={
-        #         "station_wmo_id": st.column_config.Column("WMO ID Stasiun"),
-        #         "NAME": st.column_config.Column("Nama Stasiun"),
-        #         "sandi_gts": st.column_config.Column("Sandi GTS"),
-        #         "Heavy_Rain": st.column_config.Column("Curah Hujan (mm/hari)")
-        #         # Format angka (misal "35.2") sudah diatur oleh .format() Anda,
-        #         # jadi kita hanya perlu mengganti labelnya saja.
-        #     }
-        # )
 
         st.info(f"Total kejadian Heavy Rain (curah hujan ≥ 50 mm/hari) terdeteksi: {len(df_hr_filtered)} stasiun.")
     else:
         st.info("Tidak ada stasiun dengan kejadian Heavy Rain pada tanggal yang dipilih.")
 
-
-    # # --- Tabel 2: Gale (dari df_gale) ---
-    # st.markdown("### Daftar Stasiun dengan Kejadian Gale")
-    # if not df_gale.empty:
-    #     df_tabel_gale = df_gale[['station_wmo_id', 'NAME', 'jam', 'sandi_gts', 'Kecepatan_angin']].rename(columns={
-    #         'station_wmo_id': 'WMO ID Stasiun', 'NAME': 'Nama Stasiun', 'jam': 'Jam Observasi (UTC)',
-    #         'sandi_gts': 'Sandi GTS', 'Kecepatan_angin': 'Kecepatan Angin (knot)'
-    #     }).sort_values(by="Kecepatan Angin (knot)", ascending=False).reset_index(drop=True)
-    #     df_tabel_gale.index = df_tabel_gale.index + 1
-    #     st.dataframe(df_tabel_gale, use_container_width=True)
-    #     st.info(f"Total kejadian Gale (kecepatan angin ≥ 34 knot) terdeteksi: {len(df_gale)} stasiun.")
-    # else:
-    #     st.info("Tidak ada stasiun dengan kejadian Gale pada tanggal yang dipilih.")
     # --- Tabel 2: Gale (dari df_gale) ---
     st.markdown("### Daftar Stasiun dengan Kejadian Gale")
 
     if not df_gale.empty:
-        # 1. Ini DataFrame asli Anda, disiapkan untuk tabel
-        #    Kolom 'sandi_gts' diubah namanya menjadi 'Sandi GTS'
         df_tabel_gale = df_gale[['station_wmo_id', 'NAME', 'jam', 'sandi_gts', 'Kecepatan_angin']].rename(columns={
             'station_wmo_id': 'WMO ID Stasiun', 'NAME': 'Nama Stasiun', 'jam': 'Jam Observasi (UTC)',
             'sandi_gts': 'Sandi GTS', 'Kecepatan_angin': 'Kecepatan Angin (knot)'
@@ -359,32 +290,20 @@ if authentication_status:
         
         df_tabel_gale.index = df_tabel_gale.index + 1
         
-        # ================================================================
-        #           BAGIAN TAMBAHAN UNTUK MEMPROSES TAMPILAN
-        # ================================================================
-
-        # 2. Buat salinan KHUSUS TAMPILAN
         df_tabel_gale_display = df_tabel_gale.copy()
 
-        # 3. Definisikan regex
         regex_ekstraksi_kondisional = r'(\b(AAXX|AXX|AAAXX|AAX|AXXX)\b.*?(?:=|$))'
         
-        # 4. Terapkan pembersihan ke SALINAN (df_tabel_gale_display)
-        #    PERHATIKAN: Kita pakai nama kolom 'Sandi GTS' (hasil rename)
         df_tabel_gale_display['Sandi GTS'] = (
             df_tabel_gale_display['Sandi GTS']
-            .str.extract(regex_ekstraksi_kondisional, flags=re.DOTALL)[0] # Ekstrak
-            .fillna("")                                   # Ganti error/NaN jadi string kosong
-            .str.replace(r'CCA', '', regex=True)          # Hapus CCA
-            .str.replace(r'CCB', '', regex=True)          # Hapus CCB
-            .str.replace(r'\s+', ' ', regex=True)         # Rapikan spasi
-            .str.strip()                                  # Hapus spasi awal/akhir
+            .str.extract(regex_ekstraksi_kondisional, flags=re.DOTALL)[0]
+            .fillna("") 
+            .str.replace(r'CCA', '', regex=True)
+            .str.replace(r'CCB', '', regex=True)
+            .str.replace(r'\s+', ' ', regex=True)
+            .str.strip() 
         )
-        # ================================================================
-        #         AKHIR DARI BAGIAN TAMBAHAN
-        # ================================================================
 
-        # 5. Tampilkan DataFrame salinan yang sudah bersih
         st.dataframe(df_tabel_gale_display, use_container_width=True)
         
         st.info(f"Total kejadian Gale (kecepatan angin ≥ 34 knot) terdeteksi: {len(df_gale)} stasiun.")

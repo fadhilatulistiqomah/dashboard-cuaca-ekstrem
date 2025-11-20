@@ -3,6 +3,17 @@ from pymongo import MongoClient
 import pandas as pd
 from datetime import date, timedelta
 import re
+# ==============================================================================
+# 🚨 KONTROL AKSES: HARUS DI BARIS PALING ATAS
+# ==============================================================================
+# Cek apakah status autentikasi ada dan bernilai True
+if not st.session_state.get('authentication_status'):
+    st.error("🔒 Akses Ditolak! Silakan Login di halaman utama.")
+    # st.info("Anda akan diarahkan kembali ke halaman utama...")
+    # time.sleep(1) # Beri waktu pengguna membaca pesan
+    # st.switch_page("app.py") # Opsi untuk mengarahkan kembali secara paksa (opsional)
+    st.stop() # Sangat penting: Hentikan eksekusi sisa kode di halaman ini
+# ==============================================================================
 
 # --- MongoDB Setup ---
 MONGODB_URI = "mongodb+srv://fadhilatulistiqomah:fadhilatul01@cuaca-ekstrem.bjnlh8j.mongodb.net/"
