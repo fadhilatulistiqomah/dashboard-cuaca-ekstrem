@@ -48,7 +48,7 @@ def setup_header():
 def setup_sidebar_footer():
     st.sidebar.markdown("""
         <div class="sidebar-footer"
-             style="font-size: 12px; color: #666; text-align: center; margin-top: 300px;">
+             style="font-size: 12px; color: #666; text-align: center; margin-top: 250px;">
             © 2025 | BMKG Dashboard Prototype Aktualisasi Fadhilatul Istiqomah
         </div>
     """, unsafe_allow_html=True)

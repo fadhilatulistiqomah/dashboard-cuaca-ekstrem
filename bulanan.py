@@ -66,9 +66,23 @@ def insert_to_mongodb(collection_name, df, key_cols=None):
 USERNAME = "pusmetbang"      # ganti dengan username BMKG Satu kamu
 PASSWORD = "oprpusmetbang"   # ganti dengan password BMKG Satu kamu
 
-# Tentukan TAHUN dan BULAN yang akan diproses
-TAHUN = 2025
-BULAN = 1
+# ⭐ ATUR RENTANG TANGGAL DI SINI ⭐
+TANGGAL_AWAL = "2025-11-01"   # Format: YYYY-MM-DD
+TANGGAL_AKHIR = "2025-11-18"  # Format: YYYY-MM-DD
+
+# Validasi format tanggal
+try:
+    tanggal_start = datetime.strptime(TANGGAL_AWAL, "%Y-%m-%d").date()
+    tanggal_end = datetime.strptime(TANGGAL_AKHIR, "%Y-%m-%d").date()
+    
+    if tanggal_start > tanggal_end:
+        print("❌ Error: Tanggal awal harus lebih kecil atau sama dengan tanggal akhir")
+        exit()
+    
+    print(f"✅ Range tanggal valid: {TANGGAL_AWAL} s/d {TANGGAL_AKHIR}")
+except ValueError:
+    print("❌ Error: Format tanggal tidak valid. Gunakan format YYYY-MM-DD (misal: 2025-01-15)")
+    exit()
 
 # =======================================
 # 4️⃣ Fungsi untuk ambil token
@@ -120,18 +134,22 @@ def ambil_data_gts(tanggal, token):
         raise ValueError(f"❌ Gagal mengambil data: {response.status_code} - {response.text}")
 
 # =======================================
-# 6️⃣ Jalankan proses secara looping per bulan
+# 6️⃣ Jalankan proses secara looping per hari
 # =======================================
 
-# Dapatkan jumlah hari dalam bulan yang ditentukan
-_, num_days = calendar.monthrange(TAHUN, BULAN)
+# Buat list tanggal berdasarkan range yang diberikan
+current_date = tanggal_start
+list_tanggal = []
 
-print(f"Memulai proses untuk bulan {BULAN}-{TAHUN}, total {num_days} hari.")
+while current_date <= tanggal_end:
+    list_tanggal.append(current_date.strftime("%Y-%m-%d"))
+    current_date += timedelta(days=1)
+
+print(f"\n📊 Total hari yang akan diproses: {len(list_tanggal)} hari")
+print(f"Tanggal: {list_tanggal[0]} hingga {list_tanggal[-1]}\n")
 
 # Loop untuk setiap hari
-for hari in range(1, num_days + 1):
-    # Set tanggal yang akan diproses di setiap iterasi
-    TANGGAL = f"{TAHUN}-{BULAN:02d}-{hari:02d}"
+for TANGGAL in list_tanggal:
     
     print(f"\n{'='*30}")
     print(f"🚀 MEMPROSES TANGGAL: {TANGGAL}")
@@ -1790,5 +1808,9 @@ for hari in range(1, num_days + 1):
         continue # Lanjut ke hari berikutnya jika terjadi error
 
 print(f"\n{'='*30}")
-print(f"✅ SELURUH PROSES UNTUK BULAN {BULAN}-{TAHUN} TELAH SELESAI.")
+print(f"✅ SELURUH PROSES UNTUK RANGE {TANGGAL_AWAL} s/d {TANGGAL_AKHIR} TELAH SELESAI.")
 print(f"{'='*30}")
+print(f"📊 Total hari yang diproses: {len(list_tanggal)}")
+print(f"📍 Data tersimpan di MongoDB - Database: {DB_NAME}")
+print(f"📂 Collections: data_lengkap, data_akhir, data_suspect, data_error")
+print(f"{'='*30}\n")
