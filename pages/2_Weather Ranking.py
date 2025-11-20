@@ -205,7 +205,8 @@ with tab1:
     if df_tmin.empty:
         st.warning("⚠️ Tidak ada data Tmin untuk tanggal ini.")
     else:
-        # Mulai index dari 1
+        # Reset index dan mulai dari 1 untuk ranking
+        df_tmin = df_tmin.reset_index(drop=True)
         df_tmin.index = df_tmin.index + 1
 
         # --- Fungsi pewarnaan ---
@@ -263,7 +264,8 @@ with tab2:
     if df_tmax.empty:
         st.warning("⚠️ Data Tmax belum tersedia untuk tanggal ini (biasanya update sekitar pukul 19.00 WIB).")
     else:
-        # Jadikan index mulai dari 1, bukan 0
+        # Reset index dan mulai dari 1 untuk ranking
+        df_tmax = df_tmax.reset_index(drop=True)
         df_tmax.index = df_tmax.index + 1
 
         # Fungsi highlight suhu >= 35
@@ -319,6 +321,8 @@ with tab3:
     if df_ch.empty:
         st.warning("⚠️ Tidak ada data Curah Hujan untuk tanggal ini.")
     else:
+        # Reset index dan mulai dari 1 untuk ranking
+        df_ch = df_ch.reset_index(drop=True)
         df_ch.index = df_ch.index + 1
         # def highlight_rain(val):
         #     color = 'grey' if pd.notnull(val) and val >= 50 else ''
