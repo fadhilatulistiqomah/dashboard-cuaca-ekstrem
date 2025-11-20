@@ -138,8 +138,12 @@ query_filter = {
 df = get_data_from_mongodb(collection_name, query_filter)
 if not df.empty:
     df = df.sort_values(by="jam")
-df = df[["station_wmo_id", "NAME", "jam", "tanggal", "sandi_gts",
-         "Tekanan_Permukaan", "Temperatur", "Kecepatan_angin", "Arah_angin", "Curah_Hujan_Jam", "Dew_Point"]]
+
+# Hanya pilih kolom yang ada
+desired_columns = ["station_wmo_id", "NAME", "jam", "tanggal", "sandi_gts",
+                   "Tekanan_Permukaan", "Temperatur", "Kecepatan_angin", "Arah_angin", "Curah_Hujan_Jam", "Dew_Point"]
+available_columns = [col for col in desired_columns if col in df.columns]
+df = df[available_columns]
 
 if df.empty:
     st.warning("⚠️ Tidak ada data untuk tanggal dan stasiun yang dipilih.")
@@ -169,21 +173,28 @@ df_display['sandi_gts'] = (
 )
 
 # 4. Tampilkan DataFrame yang SUDAH DIMODIFIKASI ke dashboard
+# Hanya tampilkan kolom config yang ada di DataFrame
+column_config = {}
+all_config = {
+    "station_wmo_id": st.column_config.Column("ID Stasiun"),
+    "NAME": st.column_config.Column("Nama Stasiun"),
+    "jam": st.column_config.Column("Jam"),
+    "tanggal": st.column_config.Column("Tanggal"),
+    "sandi_gts": st.column_config.Column("Sandi GTS"),
+    "Tekanan_Permukaan": st.column_config.Column("Tekanan Permukaan"),
+    "Temperatur": st.column_config.Column("Temperatur"),
+    "Kecepatan_angin": st.column_config.Column("Kecepatan Angin"),
+    "Arah_angin": st.column_config.Column("Arah Angin"),
+    "Curah_Hujan_Jam": st.column_config.Column("Curah Hujan"),
+    "Dew_Point": st.column_config.Column("Titik Embun"),
+}
+for col in df_display.columns:
+    if col in all_config:
+        column_config[col] = all_config[col]
+
 st.dataframe(
     df_display,  # <-- PENTING: Gunakan df_display, bukan df
-    column_config={
-        "station_wmo_id": st.column_config.Column("ID Stasiun"),
-        "NAME": st.column_config.Column("Nama Stasiun"),
-        "jam": st.column_config.Column("Jam"),
-        "tanggal": st.column_config.Column("Tanggal"),
-        "sandi_gts": st.column_config.Column("Sandi GTS"), # Label tetap "Sandi GTS"
-        "Tekanan_Permukaan": st.column_config.Column("Tekanan Permukaan"),
-        "Temperatur": st.column_config.Column("Temperatur"),
-        "Kecepatan_angin": st.column_config.Column("Kecepatan Angin"),
-        "Arah_angin": st.column_config.Column("Arah Angin"),
-        "Curah_Hujan_Jam": st.column_config.Column("Curah Hujan"),
-        "Dew_Point": st.column_config.Column("Titik Embun"),
-    }
+    column_config=column_config
 )
 #st.subheader(f"📍 Data Stasiun {pilih_station} pada {pilih_tanggal.strftime('%d-%m-%Y')}")
 #st.dataframe(df)

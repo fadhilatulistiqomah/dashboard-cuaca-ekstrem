@@ -89,20 +89,21 @@ def setup_header():
 def setup_sidebar_footer():
     st.sidebar.markdown("""
         <style>
-        /* Ubah sidebar jadi flex column agar footer bisa menempel di bawah */
+        /* Struktur sidebar menjadi flex vertikal */
         section[data-testid="stSidebar"] > div:first-child {
+            height: 100vh !important;     /* sidebar setinggi viewport */
             display: flex;
             flex-direction: column;
-            height: 100vh;
         }
 
-        /* Container utama menu sidebar */
+        /* Bagian konten sidebar agar mendorong footer ke bawah */
         .sidebar-content {
-            flex: 1; /* mendorong footer ke bawah */
+            flex: 1 1 auto;
         }
 
-        /* Footer */
+        /* Footer di bagian paling bawah */
         .sidebar-footer {
+            flex-shrink: 0;
             text-align: center;
             font-size: 12px;
             color: #666;
@@ -110,9 +111,12 @@ def setup_sidebar_footer():
         }
         </style>
 
+        <!-- isi kosong sebagai spacer -->
         <div class="sidebar-content"></div>
+
+        <!-- footer -->
         <div class="sidebar-footer">
-            © 2025 | BMKG Dashboard Prototype<br>
-            Fadhilatul Istiqomah
+            © 2025 | BMKG Dashboard Prototype <br>
+            Aktualisasi Fadhilatul Istiqomah
         </div>
     """, unsafe_allow_html=True)
