@@ -36,7 +36,7 @@ def get_data_from_mongodb(collection_name, query_filter):
         return pd.DataFrame()
 
 # --- Konfigurasi halaman (hanya boleh dipanggil sekali di paling atas) ---
-st.set_page_config(page_title="🌦️ Peta Cuaca Ekstrem", layout="wide")
+st.set_page_config(page_title="Peta Cuaca Ekstrem", layout="wide")
 names = ["sobp"]
 usernames = ["sobp"]
 
